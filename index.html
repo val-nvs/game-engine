@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Video Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #video-input {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        video {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <input type="file" id="video-input" accept="video/mp4,video/webm,video/ogg,video/*">
+    
+    <div id="info">
+        Drag to rotate | Scroll to zoom<br>
+        Upload a video (MP4, WebM, OGG recommended)
+    </div>
+    
+    <!-- Hidden video element -->
+    <video id="video" loop muted playsinline crossorigin="anonymous"></video>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+        
+        // Camera setup
+        const camera = new THREE.PerspectiveCamera(
+            75, 
+            window.innerWidth / window.innerHeight, 
+            0.1, 
+            1000
+        );
+        
+        // Renderer setup
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        
+        // Placeholder material before video loads
+        const placeholderMaterial = new THREE.MeshBasicMaterial({
+            color: 0x444444,
+            side: THREE.DoubleSide,
+            wireframe: true
+        });
+        
+        // Create three planes (6x6 units)
+        const planeGeometry = new THREE.PlaneGeometry(6, 6);
+        
+        // Front plane
+        const frontPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
+        frontPlane.position.set(0, 0, 3);
+        scene.add(frontPlane);
+        
+        // Left plane
+        const leftPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
+        leftPlane.position.set(-3, 0, 0);
+        leftPlane.rotation.y = Math.PI / 2;
+        scene.add(leftPlane);
+        
+        // Right plane
+        const rightPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
+        rightPlane.position.set(3, 0, 0);
+        rightPlane.rotation.y = -Math.PI / 2;
+        scene.add(rightPlane);
+        
+        // Add edges to make structure visible
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, opacity: 0.3, transparent: true });
+        
+        const edges1 = new THREE.EdgesGeometry(planeGeometry);
+        const line1 = new THREE.LineSegments(edges1, edgeMaterial);
+        frontPlane.add(line1);
+        
+        const edges2 = new THREE.EdgesGeometry(planeGeometry);
+        const line2 = new THREE.LineSegments(edges2, edgeMaterial);
+        leftPlane.add(line2);
+        
+        const edges3 = new THREE.EdgesGeometry(planeGeometry);
+        const line3 = new THREE.LineSegments(edges3, edgeMaterial);
+        rightPlane.add(line3);
+        
+        // Camera controls variables
+        let mouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let rotationX = 0;
+        let rotationY = 0;
+        let cameraDistance = 15;
+        
+        // Set initial camera position
+        camera.position.set(0, 0, cameraDistance);
+        
+        // Mouse controls
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            
+            const deltaX = e.clientX - mouseX;
+            const deltaY = e.clientY - mouseY;
+            
+            rotationY += deltaX * 0.01;
+            rotationX += deltaY * 0.01;
+            
+            // Limit vertical rotation
+            rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+            
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        // Fixed zoom with mouse wheel
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            cameraDistance += e.deltaY * 0.01;
+            cameraDistance = Math.max(5, Math.min(30, cameraDistance));
+        }, { passive: false });
+        
+        // Handle video upload
+        function getVideoErrorMessage(code) {
+            const errorMessages = {
+                1: 'MEDIA_ERR_ABORTED - Video loading aborted',
+                2: 'MEDIA_ERR_NETWORK - Network error',
+                3: 'MEDIA_ERR_DECODE - Video decoding error (unsupported codec)',
+                4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Video format/codec not supported by browser'
+            };
+            return errorMessages[code] || 'Unknown error';
+        }
+        
+        function checkCodecSupport() {
+            const video = document.createElement('video');
+            const codecs = {
+                'MP4 H.264': video.canPlayType('video/mp4; codecs="avc1.42E01E"'),
+                'MP4 H.265': video.canPlayType('video/mp4; codecs="hvc1.1.6.L93.90"'),
+                'WebM VP9': video.canPlayType('video/webm; codecs="vp9"'),
+                'WebM VP8': video.canPlayType('video/webm; codecs="vp8"')
+            };
+            return codecs;
+        }
+        
+        document.getElementById('video-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Log file details for debugging
+            console.log('File details:', {
+                name: file.name,
+                type: file.type,
+                size: file.size
+            });
+            
+            // Check browser codec support
+            const codecSupport = checkCodecSupport();
+            console.log('Browser codec support:', codecSupport);
+            
+            const url = URL.createObjectURL(file);
+            const video = document.getElementById('video');
+            
+            // Update info immediately
+            document.getElementById('info').innerHTML = 
+                'Drag to rotate | Scroll to zoom<br>Loading video...';
+            
+            video.src = url;
+            video.load();
+            
+            video.addEventListener('loadstart', () => {
+                console.log('Video loading started');
+            });
+            
+            video.addEventListener('loadedmetadata', () => {
+                console.log('Video metadata loaded:', {
+                    duration: video.duration,
+                    videoWidth: video.videoWidth,
+                    videoHeight: video.videoHeight
+                });
+            });
+            
+            video.addEventListener('canplay', () => {
+                console.log('Video can start playing');
+            });
+            
+            video.addEventListener('loadeddata', () => {
+                console.log('Video data loaded successfully');
+                video.play().then(() => {
+                    console.log('Video playing successfully');
+                }).catch(err => {
+                    console.error('Video play error:', err);
+                });
+                
+                // Create video texture
+                const videoTexture = new THREE.VideoTexture(video);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+                videoTexture.format = THREE.RGBFormat;
+                videoTexture.needsUpdate = true;
+                
+                // Create video material
+                const videoMaterial = new THREE.MeshBasicMaterial({
+                    map: videoTexture,
+                    side: THREE.DoubleSide
+                });
+                
+                // Apply to all planes
+                frontPlane.material = videoMaterial;
+                leftPlane.material = videoMaterial;
+                rightPlane.material = videoMaterial;
+                
+                // Update info text
+                document.getElementById('info').innerHTML = 
+                    'Drag to rotate | Scroll to zoom<br>Video loaded and looping';
+            });
+            
+            video.addEventListener('error', (err) => {
+                console.error('Video error details:', {
+                    error: video.error,
+                    errorCode: video.error?.code,
+                    networkState: video.networkState,
+                    readyState: video.readyState
+                });
+                
+                const errorMsg = video.error ? 
+                    getVideoErrorMessage(video.error.code) : 
+                    'Unknown video error';
+                
+                const codecSupport = checkCodecSupport();
+                const supportedCodecs = Object.entries(codecSupport)
+                    .filter(([_, support]) => support === 'probably' || support === 'maybe')
+                    .map(([codec, _]) => codec)
+                    .join(', ');
+                
+                document.getElementById('info').innerHTML = 
+                    `Drag to rotate | Scroll to zoom<br>
+                    <strong>Video Error:</strong> ${errorMsg}<br>
+                    <strong>File type:</strong> ${file.type || 'Unknown'}<br>
+                    <strong>Supported codecs:</strong> ${supportedCodecs || 'None detected'}<br>
+                    Try a different MP4 file or convert with: ffmpeg -i input.mp4 -vcodec libx264 -acodec aac output.mp4`;
+            });
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update camera position based on rotation and distance
+            camera.position.x = Math.sin(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.position.y = Math.sin(rotationX) * cameraDistance;
+            camera.position.z = Math.cos(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.lookAt(0, 0, 0);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
