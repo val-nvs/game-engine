@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Video Viewer</title>
+    <title>3D Video Cube</title>
     <style>
         body {
             margin: 0;
@@ -16,23 +16,12 @@
             width: 100vw;
             height: 100vh;
         }
-        #video-input {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 100;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 5px;
-            border-radius: 5px;
-        }
         #info {
             position: absolute;
             top: 10px;
             right: 10px;
             color: white;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
             padding: 10px;
             border-radius: 5px;
             font-size: 12px;
@@ -45,15 +34,65 @@
 <body>
     <div id="canvas-container"></div>
     
-    <input type="file" id="video-input" accept="video/mp4,video/webm,video/ogg,video/*">
+    <div id="controls">
+        <div style="font-weight: bold; margin-bottom: 10px;">Video Cube Controls</div>
+        
+        <div class="video-upload">
+            <label>Front:</label>
+            <input type="file" id="video-input-front" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-front"></span>
+        </div>
+        
+        <div class="video-upload">
+            <label>Back:</label>
+            <input type="file" id="video-input-back" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-back"></span>
+        </div>
+        
+        <div class="video-upload">
+            <label>Left:</label>
+            <input type="file" id="video-input-left" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-left"></span>
+        </div>
+        
+        <div class="video-upload">
+            <label>Right:</label>
+            <input type="file" id="video-input-right" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-right"></span>
+        </div>
+        
+        <div class="video-upload">
+            <label>Top:</label>
+            <input type="file" id="video-input-top" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-top"></span>
+        </div>
+        
+        <div class="video-upload">
+            <label>Bottom:</label>
+            <input type="file" id="video-input-bottom" accept="video/mp4,video/webm,video/ogg,video/*">
+            <span class="status" id="status-bottom"></span>
+        </div>
+        
+        <div id="playback-controls">
+            <button id="play-all">▶ Play All</button>
+            <button id="pause-all">⏸ Pause All</button>
+            <button id="sync-all">🔄 Sync All</button>
+        </div>
+    </div>
     
     <div id="info">
         Drag to rotate | Scroll to zoom<br>
-        Upload a video (MP4, WebM, OGG recommended)
+        Loading default videos... | Upload custom videos anytime
     </div>
     
-    <!-- Hidden video element -->
-    <video id="video" loop muted playsinline crossorigin="anonymous"></video>
+    <!-- Hidden video elements -->
+    <video id="video-front" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-back" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-left" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-right" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-top" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-bottom" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small" loop muted playsinline crossorigin="anonymous"></video>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -75,63 +114,137 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
         
         // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
         directionalLight.position.set(5, 5, 5);
         scene.add(directionalLight);
         
         // Placeholder material before video loads
         const placeholderMaterial = new THREE.MeshBasicMaterial({
-            color: 0x444444,
+            color: 0x333333,
             side: THREE.DoubleSide,
             wireframe: true
         });
         
-        // Create three planes (6x6 units)
-        const planeGeometry = new THREE.PlaneGeometry(6, 6);
+        // Create cube geometry (6 faces)
+        const cubeSize = 6; // 6x6 meters to match real world
+        const planeGeometry = new THREE.PlaneGeometry(cubeSize, cubeSize);
         
-        // Front plane
-        const frontPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
-        frontPlane.position.set(0, 0, 3);
-        scene.add(frontPlane);
+        // Create all 6 faces
+        const faces = {
+            front: new THREE.Mesh(planeGeometry, placeholderMaterial.clone()),
+            back: new THREE.Mesh(planeGeometry, placeholderMaterial.clone()),
+            left: new THREE.Mesh(planeGeometry, placeholderMaterial.clone()),
+            right: new THREE.Mesh(planeGeometry, placeholderMaterial.clone()),
+            top: new THREE.Mesh(planeGeometry, placeholderMaterial.clone()),
+            bottom: new THREE.Mesh(planeGeometry, placeholderMaterial.clone())
+        };
         
-        // Left plane
-        const leftPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
-        leftPlane.position.set(-3, 0, 0);
-        leftPlane.rotation.y = Math.PI / 2;
-        scene.add(leftPlane);
+        // Position and rotate faces to form a cube
+        const halfSize = cubeSize / 2;
+        faces.front.position.set(0, 0, -halfSize);
         
-        // Right plane
-        const rightPlane = new THREE.Mesh(planeGeometry, placeholderMaterial);
-        rightPlane.position.set(3, 0, 0);
-        rightPlane.rotation.y = -Math.PI / 2;
-        scene.add(rightPlane);
+        faces.back.position.set(0, 0, halfSize);
+        faces.back.rotation.y = Math.PI;
         
-        // Add edges to make structure visible
-        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, opacity: 0.3, transparent: true });
+        faces.left.position.set(-halfSize, 0, 0);
+        faces.left.rotation.y = Math.PI / 2;
         
-        const edges1 = new THREE.EdgesGeometry(planeGeometry);
-        const line1 = new THREE.LineSegments(edges1, edgeMaterial);
-        frontPlane.add(line1);
+        faces.right.position.set(halfSize, 0, 0);
+        faces.right.rotation.y = -Math.PI / 2;
         
-        const edges2 = new THREE.EdgesGeometry(planeGeometry);
-        const line2 = new THREE.LineSegments(edges2, edgeMaterial);
-        leftPlane.add(line2);
+        faces.top.position.set(0, halfSize, 0);
+        faces.top.rotation.x = Math.PI / 2; // Flipped like scoreboard
         
-        const edges3 = new THREE.EdgesGeometry(planeGeometry);
-        const line3 = new THREE.LineSegments(edges3, edgeMaterial);
-        rightPlane.add(line3);
+        faces.bottom.position.set(0, -halfSize, 0);
+        faces.bottom.rotation.x = -Math.PI / 2; // Flipped like scoreboard
         
-        // Camera controls variables
+        // Add all faces to scene
+        Object.values(faces).forEach(face => {
+            scene.add(face);
+            
+            // Add edges to make structure visible
+            const edgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x00ffff, 
+                opacity: 0.4, 
+                transparent: true 
+            });
+            const edges = new THREE.EdgesGeometry(planeGeometry);
+            const line = new THREE.LineSegments(edges, edgeMaterial);
+            face.add(line);
+        });
+        
+        // Add small green video cube (1x1m) - 6 faces with video-small.mp4
+        // Position: touching front wall, bottom wall, 1m from right wall
+        // Center at: (1.5, -2.5, -2.5)
+        const smallPlaneGeometry = new THREE.PlaneGeometry(1, 1);
+        const smallPlaceholderMaterial = new THREE.MeshBasicMaterial({
+            color: 0x006600,
+            side: THREE.DoubleSide,
+            wireframe: true
+        });
+        
+        const smallFaces = {
+            front: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone()),
+            back: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone()),
+            left: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone()),
+            right: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone()),
+            top: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone()),
+            bottom: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone())
+        };
+        
+        // Position small cube faces around center (1.5, -2.5, -2.5)
+        smallFaces.front.position.set(1.5, -2.5, -2.0);
+        
+        smallFaces.back.position.set(1.5, -2.5, -3.0);
+        smallFaces.back.rotation.y = Math.PI;
+        
+        smallFaces.left.position.set(1.0, -2.5, -2.5);
+        smallFaces.left.rotation.y = Math.PI / 2;
+        
+        smallFaces.right.position.set(2.0, -2.5, -2.5);
+        smallFaces.right.rotation.y = -Math.PI / 2;
+        
+        smallFaces.top.position.set(1.5, -2.0, -2.5);
+        smallFaces.top.rotation.x = Math.PI / 2; // Flipped like scoreboard
+        
+        smallFaces.bottom.position.set(1.5, -3.0, -2.5);
+        smallFaces.bottom.rotation.x = -Math.PI / 2; // Flipped like scoreboard
+        
+        // Add small faces to scene
+        Object.values(smallFaces).forEach(face => {
+            scene.add(face);
+            
+            // Add edges for visibility
+            const smallEdgeMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x00ff00, 
+                opacity: 0.6, 
+                transparent: true 
+            });
+            const smallEdges = new THREE.EdgesGeometry(smallPlaneGeometry);
+            const smallLine = new THREE.LineSegments(smallEdges, smallEdgeMaterial);
+            face.add(smallLine);
+        });
+        
+        // Add white opaque cube (1x1m)
+        // Position: touching left wall, centered vertically and depth-wise
+        const whiteCubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 meters
+        const whiteCubeMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff // White, opaque
+        });
+        const whiteCube = new THREE.Mesh(whiteCubeGeometry, whiteCubeMaterial);
+        whiteCube.position.set(-2.5, 0, 0); // Your calculation!
+        scene.add(whiteCube);
+        
+        // Camera controls
         let mouseDown = false;
         let mouseX = 0;
         let mouseY = 0;
         let rotationX = 0;
         let rotationY = 0;
-        let cameraDistance = 15;
+        let cameraDistance = 2.25; // Inside the 6x6 cube (cube halfSize is 3)
         
-        // Set initial camera position
         camera.position.set(0, 0, cameraDistance);
         
         // Mouse controls
@@ -154,97 +267,44 @@
             rotationY += deltaX * 0.01;
             rotationX += deltaY * 0.01;
             
-            // Limit vertical rotation
             rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
             
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
         
-        // Fixed zoom with mouse wheel
         renderer.domElement.addEventListener('wheel', (e) => {
             e.preventDefault();
-            cameraDistance += e.deltaY * 0.01;
-            cameraDistance = Math.max(5, Math.min(30, cameraDistance));
+            cameraDistance += e.deltaY * 0.007; // Slightly larger increment for bigger cube
+            cameraDistance = Math.max(0.3, Math.min(2.7, cameraDistance)); // Keep inside 6x6 cube
         }, { passive: false });
         
-        // Handle video upload
-        function getVideoErrorMessage(code) {
-            const errorMessages = {
-                1: 'MEDIA_ERR_ABORTED - Video loading aborted',
-                2: 'MEDIA_ERR_NETWORK - Network error',
-                3: 'MEDIA_ERR_DECODE - Video decoding error (unsupported codec)',
-                4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Video format/codec not supported by browser'
-            };
-            return errorMessages[code] || 'Unknown error';
-        }
+        // Video management
+        const videos = {};
+        const videoTextures = {};
         
-        function checkCodecSupport() {
-            const video = document.createElement('video');
-            const codecs = {
-                'MP4 H.264': video.canPlayType('video/mp4; codecs="avc1.42E01E"'),
-                'MP4 H.265': video.canPlayType('video/mp4; codecs="hvc1.1.6.L93.90"'),
-                'WebM VP9': video.canPlayType('video/webm; codecs="vp9"'),
-                'WebM VP8': video.canPlayType('video/webm; codecs="vp8"')
-            };
-            return codecs;
-        }
-        
-        document.getElementById('video-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // Function to load video (either from file or URL)
+        function loadVideo(faceName, source, isFile = false) {
+            const video = videos[faceName];
             
-            // Log file details for debugging
-            console.log('File details:', {
-                name: file.name,
-                type: file.type,
-                size: file.size
-            });
+            if (isFile) {
+                video.src = URL.createObjectURL(source);
+            } else {
+                video.src = source;
+            }
             
-            // Check browser codec support
-            const codecSupport = checkCodecSupport();
-            console.log('Browser codec support:', codecSupport);
-            
-            const url = URL.createObjectURL(file);
-            const video = document.getElementById('video');
-            
-            // Update info immediately
-            document.getElementById('info').innerHTML = 
-                'Drag to rotate | Scroll to zoom<br>Loading video...';
-            
-            video.src = url;
             video.load();
             
-            video.addEventListener('loadstart', () => {
-                console.log('Video loading started');
-            });
-            
-            video.addEventListener('loadedmetadata', () => {
-                console.log('Video metadata loaded:', {
-                    duration: video.duration,
-                    videoWidth: video.videoWidth,
-                    videoHeight: video.videoHeight
-                });
-            });
-            
-            video.addEventListener('canplay', () => {
-                console.log('Video can start playing');
-            });
-            
             video.addEventListener('loadeddata', () => {
-                console.log('Video data loaded successfully');
-                video.play().then(() => {
-                    console.log('Video playing successfully');
-                }).catch(err => {
-                    console.error('Video play error:', err);
-                });
+                console.log(`${faceName} video loaded`);
                 
                 // Create video texture
                 const videoTexture = new THREE.VideoTexture(video);
                 videoTexture.minFilter = THREE.LinearFilter;
                 videoTexture.magFilter = THREE.LinearFilter;
                 videoTexture.format = THREE.RGBFormat;
-                videoTexture.needsUpdate = true;
+                
+                videoTextures[faceName] = videoTexture;
                 
                 // Create video material
                 const videoMaterial = new THREE.MeshBasicMaterial({
@@ -252,42 +312,108 @@
                     side: THREE.DoubleSide
                 });
                 
-                // Apply to all planes
-                frontPlane.material = videoMaterial;
-                leftPlane.material = videoMaterial;
-                rightPlane.material = videoMaterial;
+                // Apply to the specific face(s)
+                if (faceName === 'small') {
+                    // Apply to all small cube faces
+                    Object.values(smallFaces).forEach(face => {
+                        face.material = videoMaterial;
+                    });
+                } else {
+                    // Apply to main cube face
+                    faces[faceName].material = videoMaterial;
+                }
                 
-                // Update info text
-                document.getElementById('info').innerHTML = 
-                    'Drag to rotate | Scroll to zoom<br>Video loaded and looping';
-            });
+            }, { once: true });
             
             video.addEventListener('error', (err) => {
-                console.error('Video error details:', {
-                    error: video.error,
-                    errorCode: video.error?.code,
-                    networkState: video.networkState,
-                    readyState: video.readyState
-                });
-                
-                const errorMsg = video.error ? 
-                    getVideoErrorMessage(video.error.code) : 
-                    'Unknown video error';
-                
-                const codecSupport = checkCodecSupport();
-                const supportedCodecs = Object.entries(codecSupport)
-                    .filter(([_, support]) => support === 'probably' || support === 'maybe')
-                    .map(([codec, _]) => codec)
-                    .join(', ');
-                
-                document.getElementById('info').innerHTML = 
-                    `Drag to rotate | Scroll to zoom<br>
-                    <strong>Video Error:</strong> ${errorMsg}<br>
-                    <strong>File type:</strong> ${file.type || 'Unknown'}<br>
-                    <strong>Supported codecs:</strong> ${supportedCodecs || 'None detected'}<br>
-                    Try a different MP4 file or convert with: ffmpeg -i input.mp4 -vcodec libx264 -acodec aac output.mp4`;
-            });
+                console.log(`${faceName} video not found or error:`, err);
+            }, { once: true });
+        }
+        
+        // Setup video objects
+        const faceNames = ['front', 'back', 'left', 'right', 'top', 'bottom'];
+        
+        faceNames.forEach(faceName => {
+            const video = document.getElementById(`video-${faceName}`);
+            videos[faceName] = video;
         });
+        
+        // Setup small cube video
+        const smallVideo = document.getElementById('video-small');
+        videos['small'] = smallVideo;
+        
+        // Load default videos on page load
+        function loadDefaultVideos() {
+            let loadedCount = 0;
+            let errorCount = 0;
+            const allVideoNames = [...faceNames, 'small'];
+            
+            // Load main cube videos
+            faceNames.forEach(faceName => {
+                const defaultVideoPath = `video-${faceName}.mp4`;
+                const video = videos[faceName];
+                
+                // Add one-time listeners to track loading progress
+                video.addEventListener('loadeddata', () => {
+                    loadedCount++;
+                    updateLoadingStatus();
+                }, { once: true });
+                
+                video.addEventListener('error', () => {
+                    errorCount++;
+                    updateLoadingStatus();
+                }, { once: true });
+                
+                loadVideo(faceName, defaultVideoPath, false);
+            });
+            
+            // Load small cube video
+            const smallVideo = videos['small'];
+            smallVideo.addEventListener('loadeddata', () => {
+                loadedCount++;
+                updateLoadingStatus();
+            }, { once: true });
+            
+            smallVideo.addEventListener('error', () => {
+                errorCount++;
+                updateLoadingStatus();
+            }, { once: true });
+            
+            loadVideo('small', 'video-small.mp4', false);
+            
+            function updateLoadingStatus() {
+                const totalProcessed = loadedCount + errorCount;
+                if (totalProcessed === allVideoNames.length) {
+                    const infoDiv = document.getElementById('info');
+                    if (loadedCount > 0) {
+                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                            ${loadedCount} video(s) loaded - auto-playing in 5s...`;
+                        
+                        // Update message after 5 seconds
+                        setTimeout(() => {
+                            infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                                ${loadedCount} video(s) playing`;
+                        }, 5000);
+                    } else {
+                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                            No default videos found`;
+                    }
+                }
+            }
+        }
+        
+        // Load default videos when page loads
+        loadDefaultVideos();
+        
+        // Auto-play all videos after 5 second delay
+        setTimeout(() => {
+            console.log('Starting auto-play after 5 second delay...');
+            Object.values(videos).forEach(video => {
+                if (video.src && video.readyState >= 3) { // HAVE_FUTURE_DATA or better
+                    video.play().catch(err => console.log('Autoplay prevented:', err));
+                }
+            });
+        }, 5000); // 5 second delay
         
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -300,11 +426,18 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Update camera position based on rotation and distance
+            // Update camera position
             camera.position.x = Math.sin(rotationY) * Math.cos(rotationX) * cameraDistance;
             camera.position.y = Math.sin(rotationX) * cameraDistance;
             camera.position.z = Math.cos(rotationY) * Math.cos(rotationX) * cameraDistance;
             camera.lookAt(0, 0, 0);
+            
+            // Update video textures
+            Object.values(videoTextures).forEach(texture => {
+                if (texture.image && texture.image.readyState === texture.image.HAVE_ENOUGH_DATA) {
+                    texture.needsUpdate = true;
+                }
+            });
             
             renderer.render(scene, camera);
         }
