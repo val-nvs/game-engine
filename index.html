@@ -31,7 +31,7 @@
         /* WASD Controls */
         #wasd-controls {
             position: absolute;
-            bottom: 150px;
+            bottom: 200px;
             left: 20px;
             user-select: none;
         }
@@ -98,6 +98,10 @@
             border-color: rgba(255, 255, 255, 0.8);
         }
         
+        #toggle-images {
+            min-width: 120px;
+        }
+        
         video {
             display: none;
         }
@@ -105,7 +109,7 @@
         /* Mobile adjustments */
         @media (max-width: 768px) {
             #wasd-controls {
-                bottom: 100px;
+                bottom: 150px;
             }
             #playback-controls {
                 flex-direction: column;
@@ -114,6 +118,9 @@
             #playback-controls button {
                 padding: 10px 8px;
                 font-size: 12px;
+            }
+            #toggle-images {
+                min-width: auto;
             }
         }
     </style>
@@ -139,6 +146,7 @@
         <button id="play-all">▶ Play All</button>
         <button id="pause-all">⏸ Pause All</button>
         <button id="sync-all">🔄 Sync All</button>
+        <button id="toggle-images">🖼️ Toggle Images</button>
     </div>
     
     <!-- Hidden video elements -->
@@ -372,7 +380,7 @@
             const deltaX = e.clientX - mouseX;
             const deltaY = e.clientY - mouseY;
             
-            rotationY += deltaX * 0.01;
+            rotationY -= deltaX * 0.01;  // Inverted horizontal rotation
             rotationX += deltaY * 0.01;
             
             rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
@@ -402,7 +410,7 @@
                 const deltaX = e.touches[0].clientX - touchStartX;
                 const deltaY = e.touches[0].clientY - touchStartY;
                 
-                rotationY += deltaX * 0.01;
+                rotationY -= deltaX * 0.01;  // Inverted horizontal rotation
                 rotationX += deltaY * 0.01;
                 
                 rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
@@ -521,6 +529,7 @@
         const videos = {};
         const videoTextures = {};
         const imageTextures = {};
+        let imagesEnabled = true; // Track image overlay state
         
         // Playback controls
         document.getElementById('play-all').addEventListener('click', () => {
@@ -548,6 +557,24 @@
             });
         });
         
+        // Toggle images button
+        document.getElementById('toggle-images').addEventListener('click', () => {
+            imagesEnabled = !imagesEnabled;
+            
+            // Update all shader materials
+            faceNames.forEach(faceName => {
+                const material = faceMaterials[faceName];
+                if (material && material.uniforms && imageTextures[faceName]) {
+                    material.uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
+                    material.needsUpdate = true;
+                }
+            });
+            
+            // Update button text to show state
+            const button = document.getElementById('toggle-images');
+            button.textContent = imagesEnabled ? '🖼️ Images ON' : '🖼️ Images OFF';
+        });
+        
         // Function to load image for blending
         function loadImageTexture(faceName) {
             const loader = new THREE.TextureLoader();
@@ -562,7 +589,7 @@
                     // Update the shader material if video is already loaded
                     if (videoTextures[faceName] && faceMaterials[faceName]) {
                         faceMaterials[faceName].uniforms.imageTexture.value = texture;
-                        faceMaterials[faceName].uniforms.hasImage.value = 1.0;
+                        faceMaterials[faceName].uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
                         faceMaterials[faceName].needsUpdate = true;
                     }
                 },
@@ -614,7 +641,7 @@
                     // Check if image is already loaded
                     if (imageTextures[faceName]) {
                         shaderMaterial.uniforms.imageTexture.value = imageTextures[faceName];
-                        shaderMaterial.uniforms.hasImage.value = 1.0;
+                        shaderMaterial.uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
                     }
                     
                     faces[faceName].material = shaderMaterial;
@@ -700,6 +727,9 @@
         
         // Load default videos when page loads
         loadDefaultVideos();
+        
+        // Set initial button state
+        document.getElementById('toggle-images').textContent = '🖼️ Images ON';
         
         // Auto-play all videos after 5 second delay
         setTimeout(() => {
