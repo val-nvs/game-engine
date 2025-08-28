@@ -584,6 +584,12 @@
                 imagePath,
                 (texture) => {
                     console.log(`${faceName} image loaded`);
+                    
+                    // Set nearest neighbor filtering for sharp pixels
+                    texture.minFilter = THREE.NearestFilter;
+                    texture.magFilter = THREE.NearestFilter;
+                    texture.generateMipmaps = false;
+                    
                     imageTextures[faceName] = texture;
                     
                     // Update the shader material if video is already loaded
