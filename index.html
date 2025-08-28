@@ -26,6 +26,75 @@
             border-radius: 5px;
             font-size: 12px;
         }
+        
+        /* WASD Controls */
+        #wasd-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            user-select: none;
+        }
+        
+        .wasd-button {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 5px;
+        }
+        
+        .wasd-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .wasd-button:active, .wasd-button.active {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: #00ffff;
+            transform: scale(0.95);
+        }
+        
+        #wasd-w { top: 0; left: 55px; }
+        #wasd-a { top: 55px; left: 0; }
+        #wasd-s { top: 55px; left: 55px; }
+        #wasd-d { top: 55px; left: 110px; }
+        
+        /* Playback Controls */
+        #playback-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #playback-controls button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+        
+        #playback-controls button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+        
         video {
             display: none;
         }
@@ -34,55 +103,24 @@
 <body>
     <div id="canvas-container"></div>
     
-    <div id="controls">
-        <div style="font-weight: bold; margin-bottom: 10px;">Video Cube Controls</div>
-        
-        <div class="video-upload">
-            <label>Front:</label>
-            <input type="file" id="video-input-front" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-front"></span>
-        </div>
-        
-        <div class="video-upload">
-            <label>Back:</label>
-            <input type="file" id="video-input-back" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-back"></span>
-        </div>
-        
-        <div class="video-upload">
-            <label>Left:</label>
-            <input type="file" id="video-input-left" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-left"></span>
-        </div>
-        
-        <div class="video-upload">
-            <label>Right:</label>
-            <input type="file" id="video-input-right" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-right"></span>
-        </div>
-        
-        <div class="video-upload">
-            <label>Top:</label>
-            <input type="file" id="video-input-top" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-top"></span>
-        </div>
-        
-        <div class="video-upload">
-            <label>Bottom:</label>
-            <input type="file" id="video-input-bottom" accept="video/mp4,video/webm,video/ogg,video/*">
-            <span class="status" id="status-bottom"></span>
-        </div>
-        
-        <div id="playback-controls">
-            <button id="play-all">▶ Play All</button>
-            <button id="pause-all">⏸ Pause All</button>
-            <button id="sync-all">🔄 Sync All</button>
-        </div>
+    <div id="info">
+        Drag to rotate | Scroll to zoom | WASD to move<br>
+        Loading videos...
     </div>
     
-    <div id="info">
-        Drag to rotate | Scroll to zoom<br>
-        Loading default videos... | Upload custom videos anytime
+    <!-- WASD Controls -->
+    <div id="wasd-controls">
+        <div class="wasd-button" id="wasd-w">W</div>
+        <div class="wasd-button" id="wasd-a">A</div>
+        <div class="wasd-button" id="wasd-s">S</div>
+        <div class="wasd-button" id="wasd-d">D</div>
+    </div>
+    
+    <!-- Playback Controls -->
+    <div id="playback-controls">
+        <button id="play-all">▶ Play All</button>
+        <button id="pause-all">⏸ Pause All</button>
+        <button id="sync-all">🔄 Sync All</button>
     </div>
     
     <!-- Hidden video elements -->
@@ -155,10 +193,10 @@
         faces.right.rotation.y = -Math.PI / 2;
         
         faces.top.position.set(0, halfSize, 0);
-        faces.top.rotation.x = Math.PI / 2; // Flipped like scoreboard
+        faces.top.rotation.x = Math.PI / 2;
         
         faces.bottom.position.set(0, -halfSize, 0);
-        faces.bottom.rotation.x = -Math.PI / 2; // Flipped like scoreboard
+        faces.bottom.rotation.x = -Math.PI / 2;
         
         // Add all faces to scene
         Object.values(faces).forEach(face => {
@@ -175,9 +213,7 @@
             face.add(line);
         });
         
-        // Add small green video cube (1x1m) - 6 faces with video-small.mp4
-        // Position: touching front wall, bottom wall, 1m from right wall
-        // Center at: (1.5, -2.5, -2.5)
+        // Add small green video cube (1x1m)
         const smallPlaneGeometry = new THREE.PlaneGeometry(1, 1);
         const smallPlaceholderMaterial = new THREE.MeshBasicMaterial({
             color: 0x006600,
@@ -194,7 +230,7 @@
             bottom: new THREE.Mesh(smallPlaneGeometry, smallPlaceholderMaterial.clone())
         };
         
-        // Position small cube faces around center (1.5, -2.5, -2.5)
+        // Position small cube faces
         smallFaces.front.position.set(1.5, -2.5, -2.0);
         
         smallFaces.back.position.set(1.5, -2.5, -3.0);
@@ -207,16 +243,15 @@
         smallFaces.right.rotation.y = -Math.PI / 2;
         
         smallFaces.top.position.set(1.5, -2.0, -2.5);
-        smallFaces.top.rotation.x = Math.PI / 2; // Flipped like scoreboard
+        smallFaces.top.rotation.x = Math.PI / 2;
         
         smallFaces.bottom.position.set(1.5, -3.0, -2.5);
-        smallFaces.bottom.rotation.x = -Math.PI / 2; // Flipped like scoreboard
+        smallFaces.bottom.rotation.x = -Math.PI / 2;
         
         // Add small faces to scene
         Object.values(smallFaces).forEach(face => {
             scene.add(face);
             
-            // Add edges for visibility
             const smallEdgeMaterial = new THREE.LineBasicMaterial({ 
                 color: 0x00ff00, 
                 opacity: 0.6, 
@@ -227,14 +262,13 @@
             face.add(smallLine);
         });
         
-        // Add white opaque cube (1x1m)
-        // Position: touching left wall, centered vertically and depth-wise
-        const whiteCubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 meters
+        // Add white opaque cube
+        const whiteCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
         const whiteCubeMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0xffffff // White, opaque
+            color: 0xffffff
         });
         const whiteCube = new THREE.Mesh(whiteCubeGeometry, whiteCubeMaterial);
-        whiteCube.position.set(-2.5, 0, 0); // Your calculation!
+        whiteCube.position.set(-2.5, 0, 0);
         scene.add(whiteCube);
         
         // Camera controls
@@ -243,7 +277,17 @@
         let mouseY = 0;
         let rotationX = 0;
         let rotationY = 0;
-        let cameraDistance = 2.25; // Inside the 6x6 cube (cube halfSize is 3)
+        let cameraDistance = 2.25;
+        
+        // Movement variables
+        const cameraPosition = new THREE.Vector3(0, 0, 0);
+        const moveSpeed = 0.1;
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false
+        };
         
         camera.position.set(0, 0, cameraDistance);
         
@@ -275,15 +319,120 @@
         
         renderer.domElement.addEventListener('wheel', (e) => {
             e.preventDefault();
-            cameraDistance += e.deltaY * 0.007; // Slightly larger increment for bigger cube
-            cameraDistance = Math.max(0.3, Math.min(2.7, cameraDistance)); // Keep inside 6x6 cube
+            cameraDistance += e.deltaY * 0.007;
+            cameraDistance = Math.max(0.3, Math.min(5, cameraDistance));
         }, { passive: false });
+        
+        // WASD Controls - Keyboard
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) {
+                keys[key] = true;
+                document.getElementById(`wasd-${key}`).classList.add('active');
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) {
+                keys[key] = false;
+                document.getElementById(`wasd-${key}`).classList.remove('active');
+            }
+        });
+        
+        // WASD Controls - On-screen buttons
+        ['w', 'a', 's', 'd'].forEach(key => {
+            const button = document.getElementById(`wasd-${key}`);
+            
+            button.addEventListener('mousedown', () => {
+                keys[key] = true;
+                button.classList.add('active');
+            });
+            
+            button.addEventListener('mouseup', () => {
+                keys[key] = false;
+                button.classList.remove('active');
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                keys[key] = false;
+                button.classList.remove('active');
+            });
+            
+            // Touch support
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys[key] = true;
+                button.classList.add('active');
+            });
+            
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[key] = false;
+                button.classList.remove('active');
+            });
+        });
+        
+        // Update camera movement
+        function updateMovement() {
+            // Forward vector points toward where camera is looking (inward)
+            const forward = new THREE.Vector3(
+                -Math.sin(rotationY) * Math.cos(rotationX),
+                0,
+                -Math.cos(rotationY) * Math.cos(rotationX)
+            ).normalize();
+            
+            const right = new THREE.Vector3(
+                Math.sin(rotationY + Math.PI/2),
+                0,
+                Math.cos(rotationY + Math.PI/2)
+            ).normalize();
+            
+            if (keys.w) {
+                cameraPosition.addScaledVector(forward, moveSpeed);
+            }
+            if (keys.s) {
+                cameraPosition.addScaledVector(forward, -moveSpeed);
+            }
+            if (keys.a) {
+                cameraPosition.addScaledVector(right, -moveSpeed);
+            }
+            if (keys.d) {
+                cameraPosition.addScaledVector(right, moveSpeed);
+            }
+        }
         
         // Video management
         const videos = {};
         const videoTextures = {};
         
-        // Function to load video (either from file or URL)
+        // Playback controls
+        document.getElementById('play-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.play().catch(err => console.log('Play error:', err));
+                }
+            });
+        });
+        
+        document.getElementById('pause-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.pause();
+                }
+            });
+        });
+        
+        document.getElementById('sync-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.currentTime = 0;
+                    video.play().catch(err => console.log('Sync error:', err));
+                }
+            });
+        });
+        
+        // Function to load video
         function loadVideo(faceName, source, isFile = false) {
             const video = videos[faceName];
             
@@ -314,12 +463,10 @@
                 
                 // Apply to the specific face(s)
                 if (faceName === 'small') {
-                    // Apply to all small cube faces
                     Object.values(smallFaces).forEach(face => {
                         face.material = videoMaterial;
                     });
                 } else {
-                    // Apply to main cube face
                     faces[faceName].material = videoMaterial;
                 }
                 
@@ -353,7 +500,6 @@
                 const defaultVideoPath = `video-${faceName}.mp4`;
                 const video = videos[faceName];
                 
-                // Add one-time listeners to track loading progress
                 video.addEventListener('loadeddata', () => {
                     loadedCount++;
                     updateLoadingStatus();
@@ -386,16 +532,15 @@
                 if (totalProcessed === allVideoNames.length) {
                     const infoDiv = document.getElementById('info');
                     if (loadedCount > 0) {
-                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom | WASD to move<br>
                             ${loadedCount} video(s) loaded - auto-playing in 5s...`;
                         
-                        // Update message after 5 seconds
                         setTimeout(() => {
-                            infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                            infoDiv.innerHTML = `Drag to rotate | Scroll to zoom | WASD to move<br>
                                 ${loadedCount} video(s) playing`;
                         }, 5000);
                     } else {
-                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom<br>
+                        infoDiv.innerHTML = `Drag to rotate | Scroll to zoom | WASD to move<br>
                             No default videos found`;
                     }
                 }
@@ -409,11 +554,11 @@
         setTimeout(() => {
             console.log('Starting auto-play after 5 second delay...');
             Object.values(videos).forEach(video => {
-                if (video.src && video.readyState >= 3) { // HAVE_FUTURE_DATA or better
+                if (video.src && video.readyState >= 3) {
                     video.play().catch(err => console.log('Autoplay prevented:', err));
                 }
             });
-        }, 5000); // 5 second delay
+        }, 5000);
         
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -426,11 +571,14 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Update camera position
-            camera.position.x = Math.sin(rotationY) * Math.cos(rotationX) * cameraDistance;
-            camera.position.y = Math.sin(rotationX) * cameraDistance;
-            camera.position.z = Math.cos(rotationY) * Math.cos(rotationX) * cameraDistance;
-            camera.lookAt(0, 0, 0);
+            // Update movement
+            updateMovement();
+            
+            // Update camera position (with movement offset)
+            camera.position.x = cameraPosition.x + Math.sin(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.position.y = cameraPosition.y + Math.sin(rotationX) * cameraDistance;
+            camera.position.z = cameraPosition.z + Math.cos(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.lookAt(cameraPosition.x, cameraPosition.y, cameraPosition.z);
             
             // Update video textures
             Object.values(videoTextures).forEach(texture => {
