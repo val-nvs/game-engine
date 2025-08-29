@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Video Wall System</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        #wasd-controls {
+            position: absolute;
+            bottom: 200px;
+            left: 20px;
+        }
+        
+        .wasd-button {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid white;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        #wasd-w { top: 0; left: 55px; }
+        #wasd-a { top: 55px; left: 0; }
+        #wasd-s { top: 55px; left: 55px; }
+        #wasd-d { top: 55px; left: 110px; }
+        
+        #playback-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        #playback-controls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        video {
+            display: none;
+        }
+
+        #file-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info">
+        Drag/Touch to rotate | Scroll/Pinch to zoom | WASD to move<br>
+        Loading content...
+    </div>
+
+    <div id="file-info">
+        <strong>File Naming Scheme:</strong><br>
+        Big walls: big-[face]-img.png, big-[face]-video1.mp4, big-[face]-video2.mp4<br>
+        Medium faces: medium-right-img.png, medium-front-img.png + videos<br>
+        Small cube: small-[face]-img.png, small-[face]-video1.mp4, small-[face]-video2.mp4<br>
+        Faces: front, back, left, right, top, bottom<br>
+        <small>Uses original screen blending shaders for proper image-video mixing</small>
+    </div>
+    
+    <div id="wasd-controls">
+        <div class="wasd-button" id="wasd-w">W</div>
+        <div class="wasd-button" id="wasd-a">A</div>
+        <div class="wasd-button" id="wasd-s">S</div>
+        <div class="wasd-button" id="wasd-d">D</div>
+    </div>
+    
+    <div id="playback-controls">
+        <button id="play-all">Play All</button>
+        <button id="pause-all">Pause All</button>
+        <button id="sync-all">Sync All</button>
+        <button id="switch-video">Switch Videos</button>
+        <button id="toggle-images">Images ON</button>
+    </div>
+    
+    <!-- Video elements for all cube types -->
+    <video id="video-big-front-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-front-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-back-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-back-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-left-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-left-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-right-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-right-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-top-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-top-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-bottom-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-big-bottom-2" loop muted playsinline crossorigin="anonymous"></video>
+    
+    <video id="video-medium-right-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-medium-right-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-medium-front-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-medium-front-2" loop muted playsinline crossorigin="anonymous"></video>
+    
+    <video id="video-small-front-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-front-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-back-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-back-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-left-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-left-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-right-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-right-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-top-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-top-2" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-bottom-1" loop muted playsinline crossorigin="anonymous"></video>
+    <video id="video-small-bottom-2" loop muted playsinline crossorigin="anonymous"></video>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambientLight);
+        
+        // Custom shader material for screen blending (from original)
+        function createScreenBlendMaterial() {
+            return new THREE.ShaderMaterial({
+                uniforms: {
+                    videoTexture: { value: null },
+                    imageTexture: { value: null },
+                    hasImage: { value: 0.0 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D videoTexture;
+                    uniform sampler2D imageTexture;
+                    uniform float hasImage;
+                    varying vec2 vUv;
+                    
+                    vec3 screenBlend(vec3 base, vec3 blend) {
+                        return 1.0 - (1.0 - base) * (1.0 - blend);
+                    }
+                    
+                    void main() {
+                        vec4 videoColor = texture2D(videoTexture, vUv);
+                        
+                        if (hasImage > 0.5) {
+                            vec4 imageColor = texture2D(imageTexture, vUv);
+                            vec3 blended = screenBlend(videoColor.rgb, imageColor.rgb);
+                            gl_FragColor = vec4(blended, 1.0);
+                        } else {
+                            gl_FragColor = videoColor;
+                        }
+                    }
+                `,
+                side: THREE.DoubleSide
+            });
+        }
+        
+        const placeholderMaterial = new THREE.MeshBasicMaterial({
+            color: 0x333333,
+            side: THREE.DoubleSide
+        });
+        
+        // Room dimensions: 5 wide, 2 tall, 5 deep
+        const wallWidth = 5;
+        const wallHeight = 2;
+        const wallDepth = 5;
+        const planeGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight);
+        
+        const faces = {};
+        const faceMaterials = {};
+        const faceNames = ['front', 'back', 'left', 'right', 'top', 'bottom'];
+        
+        faceNames.forEach(faceName => {
+            faceMaterials[`big-${faceName}`] = createScreenBlendMaterial();
+            faces[faceName] = new THREE.Mesh(planeGeometry, placeholderMaterial.clone());
+        });
+        
+        // Position walls to form rectangular room
+        const halfWidth = wallWidth / 2;
+        const halfHeight = wallHeight / 2;
+        const halfDepth = wallDepth / 2;
+        
+        faces.front.position.set(0, 0, -halfDepth);
+        faces.back.position.set(0, 0, halfDepth);
+        faces.back.rotation.y = Math.PI;
+        faces.left.position.set(-halfWidth, 0, 0);
+        faces.left.rotation.y = Math.PI / 2;
+        faces.right.position.set(halfWidth, 0, 0);
+        faces.right.rotation.y = -Math.PI / 2;
+        
+        // Top and bottom use different geometry (5x5)
+        const floorCeilGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
+        faces.top.geometry = floorCeilGeometry;
+        faces.bottom.geometry = floorCeilGeometry;
+        faceMaterials[`big-top`] = createScreenBlendMaterial();
+        faceMaterials[`big-bottom`] = createScreenBlendMaterial();
+        
+        faces.top.position.set(0, halfHeight, 0);
+        faces.top.rotation.x = Math.PI / 2;
+        faces.bottom.position.set(0, -halfHeight, 0);
+        faces.bottom.rotation.x = -Math.PI / 2;
+        
+        Object.values(faces).forEach(face => {
+            scene.add(face);
+        });
+        
+        // Medium floating faces (2x2)
+        const mediumFaceGeometry = new THREE.PlaneGeometry(2, 2);
+        faceMaterials['medium-right'] = createScreenBlendMaterial();
+        faceMaterials['medium-front'] = createScreenBlendMaterial();
+        
+        faces['medium-right'] = new THREE.Mesh(mediumFaceGeometry, placeholderMaterial.clone());
+        faces['medium-right'].position.set(-0.5, 0, -1.5);
+        faces['medium-right'].rotation.y = -Math.PI / 2;
+        
+        faces['medium-front'] = new THREE.Mesh(mediumFaceGeometry, placeholderMaterial.clone());
+        faces['medium-front'].position.set(-1.5, 0, -0.5);
+        
+        scene.add(faces['medium-right']);
+        scene.add(faces['medium-front']);
+        
+        // Small cube (1x1)
+        const smallPlaneGeometry = new THREE.PlaneGeometry(1, 1);
+        const smallFaces = {
+            front: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone()),
+            back: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone()),
+            left: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone()),
+            right: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone()),
+            top: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone()),
+            bottom: new THREE.Mesh(smallPlaneGeometry, placeholderMaterial.clone())
+        };
+        
+        // Create shader materials for small cube faces
+        faceNames.forEach(faceName => {
+            faceMaterials[`small-${faceName}`] = createScreenBlendMaterial();
+        });
+        
+        smallFaces.front.position.set(1.0, 0, -0.5);
+        smallFaces.back.position.set(1.0, 0, -1.5);
+        smallFaces.back.rotation.y = Math.PI;
+        smallFaces.left.position.set(0.5, 0, -1.0);
+        smallFaces.left.rotation.y = Math.PI / 2;
+        smallFaces.right.position.set(1.5, 0, -1.0);
+        smallFaces.right.rotation.y = -Math.PI / 2;
+        smallFaces.top.position.set(1.0, 0.5, -1.0);
+        smallFaces.top.rotation.x = Math.PI / 2;
+        smallFaces.bottom.position.set(1.0, -0.5, -1.0);
+        smallFaces.bottom.rotation.x = -Math.PI / 2;
+        
+        Object.values(smallFaces).forEach(face => {
+            scene.add(face);
+        });
+        
+        // White reference cube
+        const whiteCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const whiteCubeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const whiteCube = new THREE.Mesh(whiteCubeGeometry, whiteCubeMaterial);
+        whiteCube.position.set(-1, 0, 1);
+        scene.add(whiteCube);
+        
+        // Camera controls
+        let mouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let rotationX = 0;
+        let rotationY = 0;
+        let cameraDistance = 3;
+        
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let initialPinchDistance = 0;
+        
+        const cameraPosition = new THREE.Vector3(0, 0, 0);
+        const moveSpeed = 0.1;
+        const keys = { w: false, a: false, s: false, d: false };
+        
+        camera.position.set(0, 0, cameraDistance);
+        
+        // Mouse and touch controls
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            
+            const deltaX = e.clientX - mouseX;
+            const deltaY = e.clientY - mouseY;
+            
+            rotationY -= deltaX * 0.01;
+            rotationX += deltaY * 0.01;
+            
+            rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+            
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+            }
+        }, { passive: false });
+        
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const deltaX = e.touches[0].clientX - touchStartX;
+                const deltaY = e.touches[0].clientY - touchStartY;
+                
+                rotationY -= deltaX * 0.01;
+                rotationX += deltaY * 0.01;
+                
+                rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+                
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            } else if (e.touches.length === 2 && initialPinchDistance > 0) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const delta = (initialPinchDistance - distance) * 0.01;
+                cameraDistance += delta;
+                cameraDistance = Math.max(0.5, Math.min(8, cameraDistance));
+                
+                initialPinchDistance = distance;
+            }
+        }, { passive: false });
+        
+        renderer.domElement.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                initialPinchDistance = 0;
+            }
+        }, { passive: false });
+        
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            cameraDistance += e.deltaY * 0.007;
+            cameraDistance = Math.max(0.5, Math.min(8, cameraDistance));
+        }, { passive: false });
+        
+        // WASD controls
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) {
+                keys[key] = true;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) {
+                keys[key] = false;
+            }
+        });
+        
+        ['w', 'a', 's', 'd'].forEach(key => {
+            const button = document.getElementById(`wasd-${key}`);
+            
+            button.addEventListener('mousedown', () => {
+                keys[key] = true;
+            });
+            
+            button.addEventListener('mouseup', () => {
+                keys[key] = false;
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                keys[key] = false;
+            });
+            
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[key] = true;
+            }, { passive: false });
+            
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[key] = false;
+            }, { passive: false });
+        });
+        
+        function updateMovement() {
+            const forward = new THREE.Vector3(
+                -Math.sin(rotationY) * Math.cos(rotationX),
+                0,
+                -Math.cos(rotationY) * Math.cos(rotationX)
+            ).normalize();
+            
+            const right = new THREE.Vector3(
+                Math.sin(rotationY + Math.PI/2),
+                0,
+                Math.cos(rotationY + Math.PI/2)
+            ).normalize();
+            
+            if (keys.w) {
+                cameraPosition.addScaledVector(forward, moveSpeed);
+            }
+            if (keys.s) {
+                cameraPosition.addScaledVector(forward, -moveSpeed);
+            }
+            if (keys.a) {
+                cameraPosition.addScaledVector(right, -moveSpeed);
+            }
+            if (keys.d) {
+                cameraPosition.addScaledVector(right, moveSpeed);
+            }
+        }
+        
+        // Video management with original shader system
+        const videos = {};
+        const videoTextures = {};
+        const imageTextures = {};
+        const currentVideoIndex = {};
+        let imagesEnabled = true;
+        
+        const allFaceKeys = [
+            ...faceNames.map(face => `big-${face}`),
+            'medium-right', 'medium-front',
+            ...faceNames.map(face => `small-${face}`)
+        ];
+        
+        allFaceKeys.forEach(faceKey => {
+            currentVideoIndex[faceKey] = 1;
+        });
+        
+        document.getElementById('play-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.play().catch(err => console.log('Play error:', err));
+                }
+            });
+        });
+        
+        document.getElementById('pause-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.pause();
+                }
+            });
+        });
+        
+        document.getElementById('sync-all').addEventListener('click', () => {
+            Object.values(videos).forEach(video => {
+                if (video.src) {
+                    video.currentTime = 0;
+                    video.play().catch(err => console.log('Sync error:', err));
+                }
+            });
+        });
+        
+        document.getElementById('switch-video').addEventListener('click', () => {
+            allFaceKeys.forEach(faceKey => {
+                const currentIndex = currentVideoIndex[faceKey];
+                const newIndex = currentIndex === 1 ? 2 : 1;
+                currentVideoIndex[faceKey] = newIndex;
+                
+                const videoKey = `${faceKey}-${newIndex}`;
+                if (videoTextures[videoKey]) {
+                    updateFaceShader(faceKey, videoTextures[videoKey]);
+                }
+            });
+            console.log('Switched to video set:', currentVideoIndex);
+        });
+        
+        document.getElementById('toggle-images').addEventListener('click', () => {
+            imagesEnabled = !imagesEnabled;
+            
+            // Update all shader materials
+            allFaceKeys.forEach(faceKey => {
+                const material = faceMaterials[faceKey];
+                if (material && material.uniforms && imageTextures[faceKey]) {
+                    material.uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
+                    material.needsUpdate = true;
+                }
+            });
+            
+            // Update button text
+            const button = document.getElementById('toggle-images');
+            button.textContent = imagesEnabled ? 'Images ON' : 'Images OFF';
+        });
+        
+        // Load image with original system
+        function loadImageTexture(faceKey) {
+            const loader = new THREE.TextureLoader();
+            const imagePath = `${faceKey}-img.png`;
+            
+            loader.load(
+                imagePath,
+                (texture) => {
+                    console.log(`${faceKey} image loaded`);
+                    
+                    texture.minFilter = THREE.NearestFilter;
+                    texture.magFilter = THREE.NearestFilter;
+                    texture.generateMipmaps = false;
+                    
+                    imageTextures[faceKey] = texture;
+                    
+                    // Update shader material if it exists
+                    if (faceMaterials[faceKey]) {
+                        faceMaterials[faceKey].uniforms.imageTexture.value = texture;
+                        faceMaterials[faceKey].uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
+                        faceMaterials[faceKey].needsUpdate = true;
+                    }
+                },
+                undefined,
+                (err) => {
+                    console.log(`${faceKey} image not found`);
+                }
+            );
+        }
+        
+        // Update face with proper shader
+        function updateFaceShader(faceKey, videoTexture) {
+            const shaderMaterial = faceMaterials[faceKey];
+            if (!shaderMaterial) return;
+            
+            shaderMaterial.uniforms.videoTexture.value = videoTexture;
+            
+            if (imageTextures[faceKey]) {
+                shaderMaterial.uniforms.imageTexture.value = imageTextures[faceKey];
+                shaderMaterial.uniforms.hasImage.value = imagesEnabled ? 1.0 : 0.0;
+            }
+            
+            // Apply to correct face object
+            if (faceKey.startsWith('big-')) {
+                const faceName = faceKey.replace('big-', '');
+                faces[faceName].material = shaderMaterial;
+            } else if (faceKey.startsWith('medium-')) {
+                faces[faceKey].material = shaderMaterial;
+            } else if (faceKey.startsWith('small-')) {
+                const faceName = faceKey.replace('small-', '');
+                if (smallFaces[faceName]) {
+                    smallFaces[faceName].material = shaderMaterial;
+                }
+            }
+            
+            shaderMaterial.needsUpdate = true;
+        }
+        
+        function loadVideo(faceKey, videoNumber, source, isFile = false) {
+            const videoKey = `${faceKey}-${videoNumber}`;
+            const video = videos[videoKey];
+            
+            if (isFile) {
+                video.src = URL.createObjectURL(source);
+            } else {
+                video.src = source;
+            }
+            
+            video.load();
+            
+            video.addEventListener('loadeddata', () => {
+                console.log(`${faceKey} video ${videoNumber} loaded`);
+                
+                const videoTexture = new THREE.VideoTexture(video);
+                videoTexture.minFilter = THREE.NearestFilter;
+                videoTexture.magFilter = THREE.NearestFilter;
+                videoTexture.format = THREE.RGBFormat;
+                
+                videoTextures[videoKey] = videoTexture;
+                
+                // Apply to face if it's the currently selected video
+                if (currentVideoIndex[faceKey] === videoNumber) {
+                    updateFaceShader(faceKey, videoTexture);
+                }
+                
+            }, { once: true });
+            
+            video.addEventListener('error', (err) => {
+                console.log(`${faceKey} video ${videoNumber} not found`);
+            }, { once: true });
+        }
+        
+        // Setup all video elements and load images
+        allFaceKeys.forEach(faceKey => {
+            loadImageTexture(faceKey);
+            
+            for (let i = 1; i <= 2; i++) {
+                const video = document.getElementById(`video-${faceKey}-${i}`);
+                const videoKey = `${faceKey}-${i}`;
+                videos[videoKey] = video;
+            }
+        });
+        
+        function loadDefaultVideos() {
+            let loadedCount = 0;
+            let errorCount = 0;
+            const totalExpected = allFaceKeys.length * 2;
+            
+            allFaceKeys.forEach(faceKey => {
+                for (let i = 1; i <= 2; i++) {
+                    const videoPath = `${faceKey}-video${i}.mp4`;
+                    const video = videos[`${faceKey}-${i}`];
+                    
+                    video.addEventListener('loadeddata', () => {
+                        loadedCount++;
+                        updateLoadingStatus();
+                    }, { once: true });
+                    
+                    video.addEventListener('error', () => {
+                        errorCount++;
+                        updateLoadingStatus();
+                    }, { once: true });
+                    
+                    loadVideo(faceKey, i, videoPath, false);
+                }
+            });
+            
+            function updateLoadingStatus() {
+                const totalProcessed = loadedCount + errorCount;
+                const infoDiv = document.getElementById('info');
+                
+                if (totalProcessed === totalExpected) {
+                    if (loadedCount > 0) {
+                        infoDiv.innerHTML = `Drag/Touch to rotate | Scroll/Pinch to zoom | WASD to move<br>
+                            ${loadedCount}/${totalExpected} videos loaded - auto-playing in 3s...`;
+                        
+                        setTimeout(() => {
+                            infoDiv.innerHTML = `Drag/Touch to rotate | Scroll/Pinch to zoom | WASD to move<br>
+                                ${loadedCount} videos playing | Use controls to switch`;
+                        }, 3000);
+                    } else {
+                        infoDiv.innerHTML = `Drag/Touch to rotate | Scroll/Pinch to zoom | WASD to move<br>
+                            No videos found - check file naming scheme`;
+                    }
+                } else {
+                    infoDiv.innerHTML = `Drag/Touch to rotate | Scroll/Pinch to zoom | WASD to move<br>
+                        Loading... ${totalProcessed}/${totalExpected}`;
+                }
+            }
+        }
+        
+        loadDefaultVideos();
+        
+        setTimeout(() => {
+            console.log('Starting auto-play...');
+            Object.values(videos).forEach(video => {
+                if (video.src && video.readyState >= 3) {
+                    video.play().catch(err => console.log('Autoplay prevented:', err));
+                }
+            });
+        }, 3000);
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateMovement();
+            
+            camera.position.x = cameraPosition.x + Math.sin(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.position.y = cameraPosition.y + Math.sin(rotationX) * cameraDistance;
+            camera.position.z = cameraPosition.z + Math.cos(rotationY) * Math.cos(rotationX) * cameraDistance;
+            camera.lookAt(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+            
+            Object.values(videoTextures).forEach(texture => {
+                if (texture.image && texture.image.readyState === texture.image.HAVE_ENOUGH_DATA) {
+                    texture.needsUpdate = true;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
